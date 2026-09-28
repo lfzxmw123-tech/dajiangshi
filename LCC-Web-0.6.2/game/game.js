@@ -675,7 +675,7 @@ function ensureSoldierModel() {
 function makeGun() {
   const gun = new THREE.Group();
   gun.name = 'weapon';
-  gun.position.set(.31, -.31, -.58);
+  gun.position.set(.31, -.43, -.58);
   gun.rotation.set(-.07, -.035, -.015);
 
   const steel = new THREE.MeshStandardMaterial({ color: 0x181b1d, metalness: .88, roughness: .23 });
@@ -2477,14 +2477,14 @@ function updatePlayer(delta) {
       camera.position.set(position.x, position.y + .4, position.z);
     }
     const moving = keys.has('KeyW') || keys.has('KeyS') || keys.has('KeyA') || keys.has('KeyD');
-    gun.position.y = -.31 + (moving && playerPhysics.getIsOnGround() ? Math.sin(performance.now() * .012) * .012 : 0);
+    gun.position.y = -.43 + (moving && playerPhysics.getIsOnGround() ? Math.sin(performance.now() * .012) * .012 : 0);
   } else {
   forward.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw)); velocity.set(0,0,0);
   if (keys.has('KeyW')) velocity.add(forward); if (keys.has('KeyS')) velocity.sub(forward);
   if (keys.has('KeyD')) velocity.add(right); if (keys.has('KeyA')) velocity.sub(right);
   if (velocity.lengthSq()) {
     const speed = keys.has('ShiftLeft') ? 8.5 : 5.1; velocity.normalize().multiplyScalar(speed * delta); camera.position.add(velocity);
-    gun.position.y = -.31 + Math.sin(performance.now() * .012) * .012;
+    gun.position.y = -.43 + Math.sin(performance.now() * .012) * .012;
   }
   for (const enemy of enemies) {
     if (enemy.userData.dead) continue;
