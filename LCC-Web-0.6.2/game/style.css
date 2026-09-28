@@ -20,6 +20,9 @@ body::after {
   background-size: 100% 4px; mix-blend-mode: soft-light;
 }
 
+#rain-overlay { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: .42; background: linear-gradient(108deg, transparent 0 47%, rgba(190,220,235,.28) 48%, transparent 49%) 0 0/14px 28px, linear-gradient(102deg, transparent 0 48%, rgba(170,205,225,.18) 49%, transparent 50%) 7px 0/19px 34px, rgba(18,35,48,.22); mix-blend-mode: screen; animation: rain-fall .55s linear infinite; }
+@keyframes rain-fall { to { background-position: -18px 34px, 12px 42px, 0 0; } }
+body::before { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: rgba(20,36,52,.18); }
 .hud { position: fixed; inset: 24px 28px auto; z-index: 5; display: grid; grid-template-columns: 1fr auto 1fr; gap: 36px; align-items: start; pointer-events: none; }
 .brand, .timer, .mission { padding: 13px 16px; border: 1px solid var(--line); background: rgba(3, 13, 10, .64); backdrop-filter: blur(14px); }
 .brand { justify-self: start; min-width: 218px; }
@@ -110,7 +113,10 @@ dd { margin: 7px 0 0; font: 600 18px ui-monospace,monospace; }
 .icon-button.sound { right: 78px; }
 
 @media (max-width: 680px) {
-  .hud { inset: 12px; grid-template-columns: 1fr 1fr; gap: 8px; }
+  #rain-overlay { position: fixed; inset: 0; z-index: 2; pointer-events: none; opacity: .42; background: linear-gradient(108deg, transparent 0 47%, rgba(190,220,235,.28) 48%, transparent 49%) 0 0/14px 28px, linear-gradient(102deg, transparent 0 48%, rgba(170,205,225,.18) 49%, transparent 50%) 7px 0/19px 34px, rgba(18,35,48,.22); mix-blend-mode: screen; animation: rain-fall .55s linear infinite; }
+@keyframes rain-fall { to { background-position: -18px 34px, 12px 42px, 0 0; } }
+body::before { content: ""; position: fixed; inset: 0; z-index: 1; pointer-events: none; background: rgba(20,36,52,.18); }
+.hud { inset: 12px; grid-template-columns: 1fr 1fr; gap: 8px; }
   .mission { grid-column: 1 / -1; grid-row: 2; width: 100%; }
   .brand, .timer { min-width: 0; }
   .panel { padding: 28px 22px; }
