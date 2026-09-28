@@ -1,0 +1,4 @@
+*.sog filter=lfs diff=lfs merge=lfs -text
+*.ply filter=lfs diff=lfs merge=lfs -text
+*.btree filter=lfs diff=lfs merge=lfs -text
+*.lcc2 filter=lfs diff=lfs merge=lfs -text
