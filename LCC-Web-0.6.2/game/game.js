@@ -129,7 +129,7 @@ const VIEWMODEL_ENV_INTENSITY = .9;
   pmrem.dispose();
 }
 const camera = new THREE.PerspectiveCamera(66, innerWidth / innerHeight, .08, 500);
-camera.position.set(-34.86, 1.90, -1.40);
+camera.position.set(-34.86, 1.68, -1.40);
 camera.rotation.order = 'YXZ';
 scene.add(camera);
 
@@ -2815,7 +2815,7 @@ function restart() {
   clearEnemies();
   soldierFireStats.shots = soldierFireStats.hits = soldierFireStats.damage = soldierFireStats.chanceSum = 0;
   health = 100; magazine = 30; reserve = 90; kills = 0; score = 0; wave = 0; gameOver = false;
-  remainingToSpawn = 0; currentWaveTotal = 0; betweenWaves = false; reloading = false; camera.position.set(-34.86, 1.90, -1.40); yaw = pitch = 0;
+  remainingToSpawn = 0; currentWaveTotal = 0; betweenWaves = false; reloading = false; camera.position.set(-34.86, 1.68, -1.40); yaw = pitch = 0;
   ui.ammo.classList.remove('reloading');
   if (playerPhysicsReady) playerPhysics.reset(new THREE.Vector3(-34.86, 1.50, -1.40));
   ui.result.classList.remove('visible'); ui.pause.classList.remove('visible'); running = true; paused = false;
