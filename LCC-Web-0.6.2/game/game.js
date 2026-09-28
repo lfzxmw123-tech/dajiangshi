@@ -374,7 +374,7 @@ async function loadSceneCar() {
   try {
     carVehicle = await playerPhysics.loadVehicleModel({
       url: './assets/models/subaru_impreza.glb',
-      position: new THREE.Vector3(-34.86, 0, -7.40),
+      position: new THREE.Vector3(-34.86, -0.42, -7.40),
       // The Gaussian scene is slightly oversized compared with metric Three.js
       // assets, so use a visibly larger gameplay scale (about 6.9 m long).
       scale: 1.15,
@@ -1385,7 +1385,7 @@ function applyQuality() {
 function alignVehicleToGround() {
   if (!carModel || !worldCollisionMesh) return;
   const ground = findEnemyGroundY(carModel.position.x, carModel.position.z, 12);
-  if (Number.isFinite(ground)) carModel.position.y = ground;
+  if (Number.isFinite(ground)) carModel.position.y = ground - 0.42;
 }
 
 function loadWorld() {
