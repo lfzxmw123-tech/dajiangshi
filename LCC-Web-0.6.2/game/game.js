@@ -2826,6 +2826,7 @@ function animate(time = 0) {
   requestAnimationFrame(animate); const delta = Math.min(clock.getDelta(), .05);
   const positionHud = document.getElementById('position-hud');
   if (positionHud) positionHud.textContent = `POS X ${camera.position.x.toFixed(2)} | Y ${camera.position.y.toFixed(2)} | Z ${camera.position.z.toFixed(2)}`;
+  if (lanSocket && Math.floor(time / 80) !== Math.floor((time - delta * 1000) / 80)) sendLanState();
   keepViewmodelVisible();
   for (const set of weaponAnimationSets.values()) set.mixer.update(delta);
   // Pointer lock is only needed for mouse-look. Keep the simulation running
@@ -3231,6 +3232,39 @@ window.__THREE_GAME_TEST_HOOKS__ = {
 // `?mode=cs` allows starting the firefight profile without touching the UI.
 const requestedMode = query.get('mode');
 if (requestedMode && GAME_MODES[requestedMode] && ui.mode) ui.mode.value = requestedMode;
+
+
+// Minimal LAN sync prototype. Enable with ?lan=1; the server only exchanges
+// player transforms and never replaces the local single-player simulation.
+const lanRemotePlayers = new Map();
+let lanSocket = null;
+function initLanSync() {
+  if (!new URLSearchParams(location.search).has('lan')) return;
+  const host = location.hostname || '127.0.0.1';
+  try {
+    lanSocket = new WebSocket(`ws://${host}:8098`);
+    lanSocket.onmessage = event => {
+      const message = JSON.parse(event.data);
+      if (message.type !== 'state') return;
+      const seen = new Set();
+      for (const player of message.players) {
+        seen.add(player.id);
+        if (!lanRemotePlayers.has(player.id)) {
+          const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(.28, 1.05, 5, 10), new THREE.MeshBasicMaterial({ color: 0x45d6ff }));
+          mesh.userData.lanPlayer = true; scene.add(mesh); lanRemotePlayers.set(player.id, mesh);
+        }
+        const mesh = lanRemotePlayers.get(player.id); mesh.position.set(player.x, player.y - .5, player.z); mesh.rotation.y = player.yaw || 0;
+      }
+      for (const [id, mesh] of lanRemotePlayers) if (!seen.has(id)) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); lanRemotePlayers.delete(id); }
+    };
+    lanSocket.onopen = () => toast('????????');
+    lanSocket.onerror = () => toast('?????????');
+  } catch {}
+}
+function sendLanState() {
+  if (!lanSocket || lanSocket.readyState !== WebSocket.OPEN) return;
+  lanSocket.send(JSON.stringify({ type: 'state', x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw, mode: gameMode }));
+}
 
 applyQuality(); applyModeChrome(); updateHud(); animate();
 if (query.has('autostart')) begin();
