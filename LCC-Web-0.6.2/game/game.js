@@ -1,4 +1,4 @@
-﻿import * as THREE from 'three';
+import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js';
@@ -29,8 +29,8 @@ let testMode = query.has('testmode');
 // `cs` is a round-based firefight against ranged SWAT bots.
 const GAME_MODES = {
   zombie: {
-    label: '鎰熸煋绂佸尯',
-    roundLabel: '娉㈡',
+    label: '感染禁区',
+    roundLabel: '波次',
     counts: [3, 5, 7, 9, 1],
     countRanges: [[3, 6], [5, 9], [7, 12], [9, 15], [1, 1]],
     // Spawn infected one by one. The model pack contains four appearances,
@@ -40,8 +40,8 @@ const GAME_MODES = {
     replenishOnRoundEnd: false
   },
   cs: {
-    label: '榛戝奖瀵规垬',
-    roundLabel: '鍥炲悎',
+    label: '黑影对战',
+    roundLabel: '回合',
     counts: [2, 3, 4, 5, 6],
     spawnInterval: () => .9,
     intermissionMs: 4200,
@@ -362,12 +362,12 @@ async function initPlayerPhysics() {
     console.warn('Third-person rifle failed to load', error);
   }
   await loadSceneCar();
-  toast('骞垮満纰版挒涓庤烦璺冪郴缁熷凡鍚敤');
+  toast('广场碰撞与跳跃系统已启用');
 }
 
 initPlayerPhysics().catch(error => {
   console.error('Player controller init failed', error);
-  toast('鐜╁鐗╃悊鍒濆鍖栧け璐ワ紝宸蹭娇鐢ㄥ熀纭€绉诲姩');
+  toast('玩家物理初始化失败，已使用基础移动');
 });
 
 async function loadSceneCar() {
@@ -411,10 +411,10 @@ async function loadSceneCar() {
         object.material.polygonOffsetUnits = 1;
       }
     });
-    toast('杞﹁締宸插氨缁?路 闈犺繎椹鹃┒闂ㄦ寜 E 涓婅溅');
+    toast('车辆已就绪 · 靠近驾驶门按 E 上车');
   } catch (error) {
     console.error('Car model load failed', error);
-    toast('姹借溅妯″瀷鍔犺浇澶辫触');
+    toast('汽车模型加载失败');
   }
 }
 
@@ -570,7 +570,7 @@ const zombieModelReady = new Promise((resolve, reject) => {
       });
       zombieAnimations = Object.fromEntries(gltf.animations.map(clip => [clip.name, clip]));
       zombieAnimationVariants = [zombieAnimations];
-       toast('Zombie model loaded'); resolve(gltf);
+      toast('感染体模型已切换为兼容版本'); resolve(gltf);
     }, undefined, reject);
   });
 });
@@ -594,10 +594,10 @@ function ensureBossModel() {
     }, progress => {
       if (!progress.total) return;
       const percent = Math.round(progress.loaded / progress.total * 100);
-      if (wave >= 4) toast(`閲嶅瀷鎰熸煋浣撹浇鍏?${percent}%`);
+      if (wave >= 4) toast(`重型感染体载入 ${percent}%`);
     }, error => {
       console.error('Boss model load failed; using elite infected fallback', error);
-      toast('閲嶅瀷鎰熸煋浣撹祫婧愬け璐?路 宸插惎鐢ㄧ簿鑻辨劅鏌撲綋');
+      toast('重型感染体资源失败 · 已启用精英感染体');
       bossLoadComplete = true;
       resolve(null);
     });
@@ -666,7 +666,7 @@ function ensureSoldierModel() {
   }).catch(error => {
     console.error('Soldier model load failed', error);
     soldierLoadFailed = true;
-    toast('鐗硅妯″瀷鍔犺浇澶辫触 路 CS 妯″紡涓嶅彲鐢?);
+    toast('特警模型加载失败 · CS 模式不可用');
     return null;
   });
   return soldierModelPromise;
@@ -765,7 +765,7 @@ const WEAPONS = {
   // G36C.fbx ships without arms; it borrows the AK-74M arm rig and animations.
   g36c: { name: 'G36C', url: './assets/models/G36C.fbx', position: [.02, -.035, -.3], rotation: [0, 0, 0], armsRig: 'ak47' },
   // Procedural mesh built in code (no asset file); melee on the same arm rig.
-  knife: { name: '鎴樻湳鍒€', procedural: true, melee: true, armsRig: 'ak47', hint: '宸﹂敭鎸ョ爫' }
+  knife: { name: '战术刀', procedural: true, melee: true, armsRig: 'ak47', hint: '左键挥砍' }
 };
 let activeWeapon = 'ak47';
 // Bone in the AK-74M rig that carries the rifle body (follows recoil/reload).
@@ -1234,16 +1234,16 @@ async function loadWeaponModels() {
       mounted.visible = id === activeWeapon; weaponModels.set(id, mounted);
       if (id === activeWeapon) {
         proceduralGunParts.forEach(child => { child.visible = false; });
-        ui.weaponName.textContent = `${config.name} 路 R 鎹㈠脊`;
+        ui.weaponName.textContent = `${config.name} · R 换弹`;
       }
       if (id === 'ak47') {
         weaponModelReady = true;
-        toast('AK-74M 鎵嬭噦涓庡姩鐢诲凡鍔犺浇');
+        toast('AK-74M 手臂与动画已加载');
         playWeaponAnimation('Rig|AK_Draw', false);
       }
     } catch (error) {
       console.error(`${config.name} load failed`, error);
-      if (id === 'ak47') toast(`AK-74M 鍔犺浇澶辫触锛?{error.message || error}`);
+      if (id === 'ak47') toast(`AK-74M 加载失败：${error.message || error}`);
     }
   }
   if (sharedArmsRig) {
@@ -1262,8 +1262,8 @@ function switchWeapon(id) {
   if (sharedArmsRig) for (const mesh of sharedArmsRig.gunMeshes) mesh.visible = hostId === id;
   const loaded = weaponModels.has(id);
   proceduralGunParts.forEach(child => { child.visible = !loaded; });
-  ui.weaponName.textContent = `${WEAPONS[id].name} 路 ${WEAPONS[id].hint ?? 'R 鎹㈠脊'}`;
-  toast(`${WEAPONS[id].name} 宸茶澶嘸);
+  ui.weaponName.textContent = `${WEAPONS[id].name} · ${WEAPONS[id].hint ?? 'R 换弹'}`;
+  toast(`${WEAPONS[id].name} 已装备`);
   if (usesArmsRig(id)) playWeaponAnimation('Rig|AK_Draw', false);
 }
 
@@ -1348,16 +1348,16 @@ const gunLight = new THREE.PointLight(0xffb45a, 0, 4.5); gunLight.position.set(0
 
 const MODE_CHROME = {
   zombie: {
-    hero: '鎰熸煋绂佸尯',
-    lead: '鏈煡鎰熸煋甯嵎骞垮満銆傚畧浣忛樀鍦帮紝鍦ㄤ簲杞案娼腑瀛樻椿涓嬫潵銆傚脊鑽湁闄愨€斺€旂瀯鍑嗗ご閮ㄣ€?,
-    roundLabel: '娉㈡',
-    aliveLabel: '瀛樻椿鎰熸煋浣?
+    hero: '感染禁区',
+    lead: '未知感染席卷广场。守住阵地，在五轮尸潮中存活下来。弹药有限——瞄准头部。',
+    roundLabel: '波次',
+    aliveLabel: '存活感染体'
   },
   cs: {
-    hero: '鍙嶆亹鎴樻湳',
-    lead: '鏁屾柟鐗硅灏忛槦宸插崰鎹箍鍦恒€備簲涓洖鍚堬紝鍙屾柟閮界敤鏋璇濃€斺€斾粬浠細璧颁綅銆佺偣灏勩€佹崲寮广€傜Щ鍔ㄤ腑鏇撮毦琚懡涓紝闈欐鏃舵洿瀹规槗鍛戒腑銆?,
-    roundLabel: '鍥炲悎',
-    aliveLabel: '瀛樻椿鏁屼汉'
+    hero: '反恐战术',
+    lead: '敌方特警小队已占据广场。五个回合，双方都用枪说话——他们会走位、点射、换弹。移动中更难被命中，静步时更容易命中。',
+    roundLabel: '回合',
+    aliveLabel: '存活敌人'
   }
 };
 
@@ -1408,15 +1408,15 @@ function loadWorld() {
     }, () => {
       sceneReady = true; ui.loading.classList.add('hidden'); applyQuality();
       alignVehicleToGround();
-      toast('鍖哄煙鍚屾瀹屾垚'); startWave();
+      toast('区域同步完成'); startWave();
     }, (p) => {
       const n = Math.round(p * 100); ui.loadingPercent.textContent = `${n}%`; ui.loadingBar.style.width = `${n}%`;
     }, () => {
-      ui.loadingLabel.textContent = '鍦烘櫙鏁版嵁鍔犺浇澶辫触'; ui.loadingPercent.textContent = '閲嶈瘯';
+      ui.loadingLabel.textContent = '场景数据加载失败'; ui.loadingPercent.textContent = '重试';
     });
     applyQuality();
   } catch (error) {
-    ui.loadingLabel.textContent = error.message; ui.loadingPercent.textContent = '鍒濆鍖栧け璐?;
+    ui.loadingLabel.textContent = error.message; ui.loadingPercent.textContent = '初始化失败';
   }
 }
 
@@ -1779,10 +1779,10 @@ function startWave() {
     // Round-based play refills the loadout so a round is lost on aim, not attrition.
     magazine = 30; reserve = 90; reloading = false;
     ui.ammo.classList.remove('reloading');
-    toast(`绗?${wave} 鍥炲悎 路 ${remainingToSpawn} 鍚嶆晫鏂圭壒璀);
+    toast(`第 ${wave} 回合 · ${remainingToSpawn} 名敌方特警`);
   } else {
     if (wave === config.counts.length - 1) ensureBossModel();
-    toast(wave === config.counts.length ? '鏈€缁堟尝 路 閲嶅瀷鎰熸煋浣撴鍦ㄦ帴杩? : `绗?${wave} 娉?路 ${remainingToSpawn} 涓劅鏌撲綋`);
+    toast(wave === config.counts.length ? '最终波 · 重型感染体正在接近' : `第 ${wave} 波 · ${remainingToSpawn} 个感染体`);
   }
   updateHud();
 }
@@ -1791,7 +1791,7 @@ function updateWaves(delta) {
   const config = modeConfig();
   // Without this the spawn retry loop would stall forever on a missing asset.
   if (isCsMode() && soldierLoadFailed) {
-    toast('CS 妯″紡璧勬簮缂哄け 路 鏃犳硶缁х画');
+    toast('CS 模式资源缺失 · 无法继续');
     return finish(false);
   }
   if (remainingToSpawn > 0) {
@@ -1815,9 +1815,9 @@ function updateWaves(delta) {
       if (config.replenishOnRoundEnd) {
         health = Math.min(100, health + 35);
         updateHud();
-        toast(`鍥炲悎鑳滃埄 路 鐢熷懡鎭㈠鑷?${Math.ceil(health)}`);
+        toast(`回合胜利 · 生命恢复至 ${Math.ceil(health)}`);
       } else {
-        toast('鍖哄煙鏆傛椂瀹夊叏 路 涓嬩竴娉㈠嵆灏嗘姷杈?);
+        toast('区域暂时安全 · 下一波即将抵达');
       }
       later(() => { if (!gameOver) startWave(); }, config.intermissionMs);
     }
@@ -2001,7 +2001,7 @@ function killEnemy(enemy, headshot) {
     ? THREE.MathUtils.clamp(deathClip.duration * 1000 + 250, 1200, CORPSE_MAX_HOLD_MS)
     : 2400;
   later(() => removeEnemy(enemy), holdMs);
-  if (headshot) toast('鐖嗗ご +175');
+  if (headshot) toast('爆头 +175');
   if (kills % 5 === 0) reserve += 12;
   updateHud();
 }
@@ -2056,7 +2056,7 @@ function reload() {
   const reloadAction = playWeaponAnimation('Rig|AK_Reload_full', false, .1);
   const animationMs = reloadAction ? reloadAction.getClip().duration / 1.58 * 1000 : 1350;
   reloadEnd = performance.now() + Math.max(1350, animationMs);
-  ui.ammo.classList.add('reloading'); toast('鎹㈠脊涓€?);
+  ui.ammo.classList.add('reloading'); toast('换弹中…');
   reloadSound();
 }
 
@@ -2064,13 +2064,13 @@ function finish(won) {
   if (gameOver) return;
   gameOver = true; running = false; document.exitPointerLock?.();
   const cs = isCsMode();
-  $('#result-label').textContent = won ? (cs ? '骞垮満宸插ず鍥? : '闅旂鍖鸿們娓?) : (cs ? '灏忛槦琚鐏? : '鐢熷懡淇″彿涓柇');
-  $('#result-mark').textContent = won ? '鉁? : '脳';
-  $('#result-title').textContent = won ? (cs ? '鍏ㄥ洖鍚堣儨鍒? : '浣犳椿涓嬫潵浜?) : (cs ? '浣犺鍑诲€掍簡' : '浣犲凡琚劅鏌?);
+  $('#result-label').textContent = won ? (cs ? '广场已夺回' : '隔离区肃清') : (cs ? '小队被歼灭' : '生命信号中断');
+  $('#result-mark').textContent = won ? '✓' : '×';
+  $('#result-title').textContent = won ? (cs ? '全回合胜利' : '你活下来了') : (cs ? '你被击倒了' : '你已被感染');
   $('#result-copy').textContent = won
-    ? (cs ? '鏁屾柟鐗硅灏忛槦宸插叏閮ㄨ娓呴櫎銆? : '鏃ユ櫡骞垮満鐨勬劅鏌撲綋宸插叏閮ㄦ竻闄ゃ€?)
-    : (cs ? '浜ょ伀涓繚鎸佺Щ鍔ㄣ€佸埄鐢ㄥ弽搴斿欢杩熷厛鎵嬪紑鏋€? : '淇濇寔璺濈銆佺瀯鍑嗗ご閮紝鍐嶈瘯涓€娆°€?);
-  $('#result-score').textContent = score.toLocaleString(); $('#result-time').textContent = `${kills} 鍑绘潃`;
+    ? (cs ? '敌方特警小队已全部被清除。' : '雨夜战场的感染体已全部清除。')
+    : (cs ? '交火中保持移动、利用反应延迟先手开枪。' : '保持距离、瞄准头部，再试一次。');
+  $('#result-score').textContent = score.toLocaleString(); $('#result-time').textContent = `${kills} 击杀`;
   ui.result.classList.add('visible'); tone(won ? 620 : 70, .6);
 }
 
@@ -2444,7 +2444,7 @@ function updatePlayer(delta) {
       viewmodelRoot.visible = false;
       resetCrosshairPosition();
       ui.crosshair.classList.add('hidden');
-      if (ui.vehiclePrompt) ui.vehiclePrompt.textContent = 'E 涓嬭溅 路 WASD 椹鹃┒ 路 鍙抽敭鎷栧姩瑙嗚';
+      if (ui.vehiclePrompt) ui.vehiclePrompt.textContent = 'E 下车 · WASD 驾驶 · 右键拖动视角';
       updateVehicleImpacts();
       return;
     }
@@ -2560,7 +2560,7 @@ function updateVehiclePrompt() {
     return;
   }
   const near = getVehicleBoardingDistance() <= VEHICLE_BOARDING_DISTANCE;
-  ui.vehiclePrompt.textContent = 'E 涓婅溅';
+  ui.vehiclePrompt.textContent = 'E 上车';
   ui.vehiclePrompt.classList.toggle('hidden', !near);
 }
 
@@ -2591,7 +2591,7 @@ function getVehicleBoardingDistance() {
 
 function toggleVehicleMode() {
   if (!playerPhysicsReady || !carVehicle) {
-    toast('杞﹁締浠嶅湪鍔犺浇锛岃绋嶅€?);
+    toast('车辆仍在加载，请稍候');
     return;
   }
   if (playerPhysics.controllerMode === 1) {
@@ -2604,12 +2604,12 @@ function toggleVehicleMode() {
     // Walking always uses the FPS camera. VehicleSystem changes controller
     // mode but does not restore the original view by itself.
     if (!playerPhysics.isFirstPerson) playerPhysics.cam.changeView();
-    toast('宸蹭笅杞?);
+    toast('已下车');
     return;
   }
   const boardingDistance = getVehicleBoardingDistance();
   if (boardingDistance > VEHICLE_BOARDING_DISTANCE) {
-    toast(`璺濈杞﹁締澶繙 路 杩橀渶闈犺繎 ${Math.ceil(boardingDistance - VEHICLE_BOARDING_DISTANCE)} 绫砢);
+    toast(`距离车辆太远 · 还需靠近 ${Math.ceil(boardingDistance - VEHICLE_BOARDING_DISTANCE)} 米`);
     return;
   }
   // Entry is now tied to the computed driver-door point, not the car centre or
@@ -2634,8 +2634,8 @@ function toggleVehicleMode() {
   // CameraSystem only runs its chase-camera update in third-person mode.
   // Switch after mounting so its look target is the active car.
   if (playerPhysics.isFirstPerson) playerPhysics.cam.changeView();
-  if (playerPhysics.controllerMode === 1) toast('宸蹭笂杞?路 WASD 椹鹃┒ 路 Space 鎵嬪埞');
-  else toast('璇烽潬杩戦┚椹堕棬鍚庡啀鎸?E');
+  if (playerPhysics.controllerMode === 1) toast('已上车 · WASD 驾驶 · Space 手刹');
+  else toast('请靠近驾驶门后再按 E');
 }
 
 function updateVehicleImpacts() {
@@ -2911,7 +2911,7 @@ document.addEventListener('keydown', e => {
     playerPhysics.playerModel.visible = !playerPhysics.isFirstPerson;
     viewmodelRoot.visible = playerPhysics.isFirstPerson;
     if (playerPhysics.isFirstPerson) resetCrosshairPosition();
-    toast(playerPhysics.isFirstPerson ? '绗竴浜虹О瑙嗚' : '绗笁浜虹О瑙嗚');
+    toast(playerPhysics.isFirstPerson ? '第一人称视角' : '第三人称视角');
   }
   if (e.code === 'KeyR') reload();
   if (e.code === 'Digit1') switchWeapon('ak47');
@@ -3234,4 +3234,3 @@ if (requestedMode && GAME_MODES[requestedMode] && ui.mode) ui.mode.value = reque
 
 applyQuality(); applyModeChrome(); updateHud(); animate();
 if (query.has('autostart')) begin();
-
