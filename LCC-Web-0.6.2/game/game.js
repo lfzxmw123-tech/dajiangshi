@@ -1875,6 +1875,7 @@ function shoot() {
   const driving = playerPhysics?.controllerMode === 1;
   if (!running || paused || gameOver || reloading || driving || now - lastShot < 165) return;
   if (magazine <= 0) { tone(95, .08); reload(); return; }
+  lanShot++;
   lastShot = now; magazine--; gunKick = 1; gunSlideKick = 1; shake = .018;
   if (!driving) playWeaponAnimation('Rig|AK_Shot', false, .025);
   recoilVelocity -= 1.65; recoilYaw += (random() - .5) * .012;
@@ -2826,7 +2827,6 @@ function animate(time = 0) {
   requestAnimationFrame(animate); const delta = Math.min(clock.getDelta(), .05);
   const positionHud = document.getElementById('position-hud');
   if (positionHud) positionHud.textContent = `POS X ${camera.position.x.toFixed(2)} | Y ${camera.position.y.toFixed(2)} | Z ${camera.position.z.toFixed(2)}`;
-  if (lanSocket && Math.floor(time / 80) !== Math.floor((time - delta * 1000) / 80)) sendLanState();
   keepViewmodelVisible();
   for (const set of weaponAnimationSets.values()) set.mixer.update(delta);
   // Pointer lock is only needed for mouse-look. Keep the simulation running
@@ -2844,6 +2844,8 @@ function animate(time = 0) {
     else updateZombies(delta, time);
     updateWaves(delta);
   }
+  sendLanState();
+  updateLanAvatars(delta);
   updateTracers(delta);
   for (let i = casings.length - 1; i >= 0; i--) {
     const c = casings[i]; c.userData.life -= delta; c.userData.velocity.y -= 7.5 * delta; c.position.addScaledVector(c.userData.velocity, delta);
@@ -3234,37 +3236,123 @@ const requestedMode = query.get('mode');
 if (requestedMode && GAME_MODES[requestedMode] && ui.mode) ui.mode.value = requestedMode;
 
 
-// Minimal LAN sync prototype. Enable with ?lan=1; the server only exchanges
-// player transforms and never replaces the local single-player simulation.
+// LAN presentation only; AI and damage remain local to each client.
 const lanRemotePlayers = new Map();
-let lanSocket = null;
+let lanSocket = null, lanOwnId = null, lanShot = 0, lanLastSend = 0;
+let lanLatestPlayers = [];
+const lanFeet = new THREE.Vector3(), lanDirection = new THREE.Vector3();
+function createLanAvatar() {
+  const group = new THREE.Group();
+  const model = SkeletonUtils.clone(soldierTemplate);
+  const posedHeight = soldierTemplate.userData.posedHeight;
+  const measuredHeight = posedHeight > .001
+    ? posedHeight
+    : new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3()).y;
+  model.scale.setScalar(SOLDIER_HEIGHT_M / Math.max(measuredHeight, .001));
+  model.updateMatrixWorld(true);
+  model.position.y -= new THREE.Box3().setFromObject(model).min.y;
+  // Mixamo rigs in this project face local +Z, which is also the axis
+  // Object3D.lookAt() aims at the target, so no half turn is needed. This
+  // matches the verified mixamorig branch in createZombie().
+  model.rotation.y = SOLDIER_FACING_YAW_RAD;
+  model.traverse(object => { if (object.isMesh) object.raycast = () => {}; });
+  group.add(model);
+
+  let heldRifle = null;
+  const rightHand = model.getObjectByName('mixamorigRightHand');
+  if (soldierRifleTemplate && rightHand) {
+    const rifle = SkeletonUtils.clone(soldierRifleTemplate);
+    const rifleBox = new THREE.Box3().setFromObject(rifle);
+    const rifleLength = Math.max(...rifleBox.getSize(new THREE.Vector3()).toArray(), .001);
+    // Bone space is scaled by the armature, so normalise against the bone.
+    const boneScale = new THREE.Vector3();
+    rightHand.getWorldScale(boneScale);
+    rifle.scale.setScalar(SOLDIER_RIFLE_LENGTH_M / rifleLength / Math.max(boneScale.x, .0001));
+    rifle.position.set(...SOLDIER_RIFLE_OFFSET_M);
+    rifle.rotation.set(...SOLDIER_RIFLE_ROTATION_RAD);
+    rightHand.add(rifle);
+    heldRifle = rifle;
+  }
+
+
+  const mixer = new THREE.AnimationMixer(model);
+  const actions = {};
+  for (const [key, clip] of Object.entries(soldierAnimations)) actions[key] = mixer.clipAction(clip);
+  if (actions.Death) { actions.Death.setLoop(THREE.LoopOnce, 1); actions.Death.clampWhenFinished = true; }
+  const flash = new THREE.Mesh(new THREE.SphereGeometry(.09, 6, 4), new THREE.MeshBasicMaterial({ color: 0xffdd88, depthWrite: false }));
+  flash.position.copy(SOLDIER_MUZZLE_OFFSET); flash.position.z += .45; flash.visible = false; group.add(flash);
+  group.userData = { model, mixer, actions, target: new THREE.Vector3(), targetYaw: 0, initialized: false, lastShot: null, flashUntil: 0, action: null, desiredAction: 'Idle', flash };
+  scene.add(group); return group;
+}
+function removeLanAvatar(id, group) {
+  group.userData.mixer.stopAllAction(); group.userData.mixer.uncacheRoot(group.userData.model);
+  group.userData.flash.geometry.dispose(); group.userData.flash.material.dispose();
+  // Character geometry/materials belong to the shared template.
+  scene.remove(group); lanRemotePlayers.delete(id);
+}
+function applyLanSnapshot() {
+  const seen = new Set();
+  for (const player of lanLatestPlayers) {
+    if (player.id === lanOwnId) continue;
+    seen.add(player.id);
+    if (!soldierTemplate || !soldierRifleTemplate) continue;
+    let group = lanRemotePlayers.get(player.id);
+    if (!group) { group = createLanAvatar(); lanRemotePlayers.set(player.id, group); }
+    const d = group.userData;
+    d.target.set(player.x, player.y, player.z); d.targetYaw = player.yaw;
+    if (!d.initialized) { group.position.copy(d.target); group.rotation.y = d.targetYaw; d.initialized = true; }
+    group.visible = !player.driving;
+    if (d.lastShot !== null && player.shot > d.lastShot) {
+      d.flashUntil = performance.now() + 140;
+      d.actions.Shoot?.reset().setLoop(THREE.LoopOnce, 1).play();
+    }
+    d.lastShot = player.shot; d.desiredAction = player.action;
+  }
+  for (const [id, group] of lanRemotePlayers) if (!seen.has(id)) removeLanAvatar(id, group);
+}
+function updateLanAvatars(delta) {
+  for (const group of lanRemotePlayers.values()) {
+    const d = group.userData, blend = 1 - Math.exp(-14 * delta);
+    group.position.lerp(d.target, blend);
+    group.rotation.y += Math.atan2(Math.sin(d.targetYaw - group.rotation.y), Math.cos(d.targetYaw - group.rotation.y)) * blend;
+    const action = d.actions[d.desiredAction] || d.actions.Idle;
+    if (action && action !== d.action) { d.action?.fadeOut(.15); action.reset().fadeIn(.15).play(); d.action = action; }
+    d.mixer.update(delta); d.flash.visible = performance.now() < d.flashUntil;
+  }
+}
 function initLanSync() {
-  if (!new URLSearchParams(location.search).has('lan')) return;
-  const host = location.hostname || '127.0.0.1';
-  try {
-    lanSocket = new WebSocket(`ws://${host}:8098`);
-    lanSocket.onmessage = event => {
+  if (!query.has('lan')) return;
+  const endpoint = new URL(location.href);
+  endpoint.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  endpoint.port = '8098'; endpoint.pathname = '/'; endpoint.search = ''; endpoint.hash = '';
+  ensureSoldierModel().then(applyLanSnapshot);
+  lanSocket = new WebSocket(endpoint);
+  lanSocket.onmessage = event => {
+    try {
       const message = JSON.parse(event.data);
-      if (message.type !== 'state') return;
-      const seen = new Set();
-      for (const player of message.players) {
-        seen.add(player.id);
-        if (!lanRemotePlayers.has(player.id)) {
-          const mesh = new THREE.Mesh(new THREE.CapsuleGeometry(.28, 1.05, 5, 10), new THREE.MeshBasicMaterial({ color: 0x45d6ff }));
-          mesh.userData.lanPlayer = true; scene.add(mesh); lanRemotePlayers.set(player.id, mesh);
-        }
-        const mesh = lanRemotePlayers.get(player.id); mesh.position.set(player.x, player.y - .5, player.z); mesh.rotation.y = player.yaw || 0;
-      }
-      for (const [id, mesh] of lanRemotePlayers) if (!seen.has(id)) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); lanRemotePlayers.delete(id); }
-    };
-    lanSocket.onopen = () => toast('????????');
-    lanSocket.onerror = () => toast('?????????');
-  } catch {}
+      if (message.type === 'welcome') lanOwnId = message.id;
+      else if (message.type === 'state') { lanLatestPlayers = message.players; applyLanSnapshot(); }
+    } catch (error) { console.warn('LAN message failed', error); }
+  };
+  lanSocket.onopen = () => toast('LAN connected');
+  lanSocket.onerror = () => toast('LAN connection failed');
+  lanSocket.onclose = () => {
+    for (const [id, group] of lanRemotePlayers) removeLanAvatar(id, group);
+    lanLatestPlayers = []; lanOwnId = null; toast('LAN disconnected; reconnecting');
+    setTimeout(initLanSync, 3000);
+  };
 }
 function sendLanState() {
-  if (!lanSocket || lanSocket.readyState !== WebSocket.OPEN) return;
-  lanSocket.send(JSON.stringify({ type: 'state', x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw, mode: gameMode }));
+  if (!lanSocket || lanSocket.readyState !== WebSocket.OPEN || !running || performance.now() - lanLastSend < 80) return;
+  lanLastSend = performance.now();
+  if (playerPhysicsReady && playerPhysics.playerModel) playerPhysics.playerModel.getWorldPosition(lanFeet);
+  else { camera.getWorldPosition(lanFeet); lanFeet.y -= PLAYER_EYE_HEIGHT; }
+  camera.getWorldDirection(lanDirection);
+  const moving = !paused && ['KeyW', 'KeyS', 'KeyA', 'KeyD'].some(key => keys.has(key));
+  const action = health <= 0 ? 'Death' : reloading ? 'Reload' : moving ? (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 'Run' : 'Walk') : 'Idle';
+  lanSocket.send(JSON.stringify({ type: 'state', x: lanFeet.x, y: lanFeet.y, z: lanFeet.z, yaw: Math.atan2(lanDirection.x, lanDirection.z), action, shot: lanShot, driving: playerPhysics?.controllerMode === 1 }));
 }
+initLanSync();
 
 applyQuality(); applyModeChrome(); updateHud(); animate();
 if (query.has('autostart')) begin();
