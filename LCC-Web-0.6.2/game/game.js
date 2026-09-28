@@ -570,7 +570,7 @@ const zombieModelReady = new Promise((resolve, reject) => {
       });
       zombieAnimations = Object.fromEntries(gltf.animations.map(clip => [clip.name, clip]));
       zombieAnimationVariants = [zombieAnimations];
-      toast('鎰熸煋浣撴ā鍨嬪凡鍒囨崲涓哄吋瀹圭増鏈?); resolve(gltf);
+       toast('Zombie model loaded'); resolve(gltf);
     }, undefined, reject);
   });
 });
