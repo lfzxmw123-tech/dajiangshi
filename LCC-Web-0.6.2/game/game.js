@@ -1553,12 +1553,12 @@ function createZombie(index) {
     telegraph,
     gaitPhase: random() * Math.PI * 2,
     gaitRate: 4.1 + random() * 4.4,
-    lean: (random() - .5) * .10,
+    lean: 0,
     strideSide: random() > .5 ? 1 : -1,
     motionStyle: Math.floor(random() * 4),
     strideStrength: .72 + random() * .62,
-    hunchVariation: (random() - .5) * .24,
-    headTiltVariation: (random() - .5) * .34,
+    hunchVariation: 0,
+    headTiltVariation: 0,
     armVariation: (random() - .5) * .42,
     animationRate: .72 + random() * .62,
     collisionRadius: (isBoss ? .72 : .48) * bodyVariation,
@@ -2156,8 +2156,8 @@ function updateZombies(delta, time) {
         z.userData.activeAction.timeScale = (distance > 12 ? 1.1 : .88 + z.userData.speed * .12)
           * styleRate * z.userData.animationRate;
       }
-      model.rotation.z = z.userData.lean + step * .012;
-      model.rotation.x = step * .05;
+      model.rotation.z = 0;
+      model.rotation.x = 0;
       model.position.y = z.userData.modelBaseY + plant * .07;
       z.userData.body.position.y = z.userData.bodyBaseY + plant * .018;
       z.userData.head.position.y = z.userData.headBaseY + plant * .025;
