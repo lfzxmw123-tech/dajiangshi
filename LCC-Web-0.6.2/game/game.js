@@ -192,7 +192,7 @@ let vehicleCameraDragging = false;
 const vehicleCameraForward = new THREE.Vector3();
 const vehicleCameraTarget = new THREE.Vector3();
 const vehicleCameraDesired = new THREE.Vector3();
-const PLAYER_EYE_HEIGHT = 1.65;
+const PLAYER_EYE_HEIGHT = 1.55;
 let soldierTemplate;
 let soldierRifleTemplate;
 let soldierAnimations = {};
@@ -341,7 +341,7 @@ async function initPlayerPhysics() {
       rotateY: Math.PI,
       firstPersonCameraOffset: [0, 40, 0]
     },
-    initPos: new THREE.Vector3(-34.86, 1.50, -1.40),
+    initPos: new THREE.Vector3(-34.86, 1.40, -1.40),
     colliders: [{ motion: 'static', shape: { kind: 'mesh', source: collider } }],
     isFirstPerson: true,
     enableOverShoulderView: true,
@@ -2496,7 +2496,7 @@ function updatePlayer(delta) {
     }
   }
   camera.position.x = THREE.MathUtils.clamp(camera.position.x, -56, 56);
-  camera.position.z = THREE.MathUtils.clamp(camera.position.z, -60, 13); camera.position.y = 1.65;
+  camera.position.z = THREE.MathUtils.clamp(camera.position.z, -60, 13); camera.position.y = PLAYER_EYE_HEIGHT;
   }
   const s = shake; shake *= .82;
   recoilPitch += recoilVelocity * delta;
