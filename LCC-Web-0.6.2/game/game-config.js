@@ -20,7 +20,7 @@ export const MODEL_MATRIX = new THREE.Matrix4(
 
 export const QUALITY = {
   high: { dpr: Math.min(devicePixelRatio, 2), splats: 8000000, node: 4000000, lod: 0, distance: 240 },
-  balanced: { dpr: Math.min(devicePixelRatio, 1.35), splats: 2200000, node: 1000000, lod: 1, distance: 200 },
+  balanced: { dpr: Math.min(devicePixelRatio, 1.0), splats: 900000, node: 400000, lod: 2, distance: 100 },
   low: { dpr: Math.min(devicePixelRatio, .9), splats: 900000, node: 400000, lod: 2, distance: 100 }
 };
 
