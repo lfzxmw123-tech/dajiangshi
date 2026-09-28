@@ -2839,14 +2839,6 @@ function animate(time = 0) {
     if (primaryFireHeld) shoot();
     updateKnife(performance.now());
     updateVehiclePrompt();
-    if (carVehicle && vehicleGroundY !== null) {
-      const t = carVehicle.chassisBody.translation();
-      const v = carVehicle.chassisBody.linvel();
-      if (Math.abs(t.y - vehicleGroundY) > 0.08 || Math.abs(v.y) > 0.25) {
-        carVehicle.chassisBody.setTranslation({ x: t.x, y: vehicleGroundY, z: t.z }, true);
-        carVehicle.chassisBody.setLinvel({ x: v.x, y: 0, z: v.z }, true);
-      }
-    }
     if (isCsMode()) updateSoldiers(delta, performance.now());
     else updateZombies(delta, time);
     updateWaves(delta);
