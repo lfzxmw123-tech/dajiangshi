@@ -181,6 +181,7 @@ let playerPhysics;
 let playerPhysicsReady = false;
 let carModel;
 let carVehicle;
+let vehicleGroundY = null;
 let thirdPersonRifle;
 let thirdPersonMuzzle;
 const thirdPersonMuzzlePosition = new THREE.Vector3();
@@ -391,7 +392,7 @@ async function loadSceneCar() {
     if (!carVehicle) throw new Error('vehicle controller rejected the model');
     // The imported scene collider is not part of the vehicle controller's physics world.
     // Disable free-fall until a vehicle/world collider bridge is available.
-    carVehicle.chassisBody.gravityScale = 0;
+    carVehicle.chassisBody.gravityScale = 1;
     // Make boarding forgiving. The stock controller otherwise uses a tight
     // radius around the chassis centre, which can reject E beside the door.
     playerPhysics.vehicle.boardingPadding = 3.2;
@@ -1390,6 +1391,7 @@ function alignVehicleToGround() {
   const ground = findEnemyGroundY(carModel.position.x, carModel.position.z, 12);
   if (Number.isFinite(ground)) {
     carModel.position.y = ground;
+    vehicleGroundY = ground;
     const t = carVehicle?.chassisBody?.translation?.();
     if (t && carVehicle.chassisBody.setTranslation) carVehicle.chassisBody.setTranslation({ x: t.x, y: ground, z: t.z }, true);
   }
@@ -2837,6 +2839,14 @@ function animate(time = 0) {
     if (primaryFireHeld) shoot();
     updateKnife(performance.now());
     updateVehiclePrompt();
+    if (carVehicle && vehicleGroundY !== null) {
+      const t = carVehicle.chassisBody.translation();
+      const v = carVehicle.chassisBody.linvel();
+      if (Math.abs(t.y - vehicleGroundY) > 0.08 || Math.abs(v.y) > 0.25) {
+        carVehicle.chassisBody.setTranslation({ x: t.x, y: vehicleGroundY, z: t.z }, true);
+        carVehicle.chassisBody.setLinvel({ x: v.x, y: 0, z: v.z }, true);
+      }
+    }
     if (isCsMode()) updateSoldiers(delta, performance.now());
     else updateZombies(delta, time);
     updateWaves(delta);
