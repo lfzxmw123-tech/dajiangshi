@@ -374,7 +374,7 @@ async function loadSceneCar() {
   try {
     carVehicle = await playerPhysics.loadVehicleModel({
       url: './assets/models/subaru_impreza.glb',
-      position: new THREE.Vector3(-34.86, -0.42, -7.40),
+      position: new THREE.Vector3(-34.86, 0, -7.40),
       // The Gaussian scene is slightly oversized compared with metric Three.js
       // assets, so use a visibly larger gameplay scale (about 6.9 m long).
       scale: 1.15,
@@ -389,6 +389,9 @@ async function loadSceneCar() {
       power: { maxSpeed: 78, acceleration: 11, deceleration: 18 }
     });
     if (!carVehicle) throw new Error('vehicle controller rejected the model');
+    // The imported scene collider is not part of the vehicle controller's physics world.
+    // Disable free-fall until a vehicle/world collider bridge is available.
+    carVehicle.chassisBody.gravityScale = 0;
     // Make boarding forgiving. The stock controller otherwise uses a tight
     // radius around the chassis centre, which can reject E beside the door.
     playerPhysics.vehicle.boardingPadding = 3.2;
@@ -1385,7 +1388,11 @@ function applyQuality() {
 function alignVehicleToGround() {
   if (!carModel || !worldCollisionMesh) return;
   const ground = findEnemyGroundY(carModel.position.x, carModel.position.z, 12);
-  if (Number.isFinite(ground)) carModel.position.y = ground - 0.42;
+  if (Number.isFinite(ground)) {
+    carModel.position.y = ground;
+    const t = carVehicle?.chassisBody?.translation?.();
+    if (t && carVehicle.chassisBody.setTranslation) carVehicle.chassisBody.setTranslation({ x: t.x, y: ground, z: t.z }, true);
+  }
 }
 
 function loadWorld() {
